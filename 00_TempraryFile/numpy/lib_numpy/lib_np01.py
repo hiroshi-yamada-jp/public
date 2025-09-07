@@ -1,6 +1,6 @@
 """
 概要: 日時文字列の変換・検査、時間計算ライブラリ
-更新: 2025/09/05
+更新: 2025/09/07
 AI Prompt:
    numpyで下記仕様を満たす関数を作れますか (doc stringを渡す)
 """
@@ -11,6 +11,7 @@ from loguru import logger
 
 
 class Array2d:
+
     # -------------------------------
     #  汎用関数
     # -------------------------------
@@ -89,31 +90,30 @@ class Array2d:
 
         Args:
             array_2d: 2次元のNumPy配列
-            rows: 除外対象行のインデックス番号リスト
-            cols: 除外対象列のインデックス番号リスト
+            rows: 除外対象行のインデックス番号リスト / None: 全行を抽出
+            cols: 除外対象列のインデックス番号リスト / None: 全列を抽出
         Returns:
             np.ndarray: 指定範囲を除いて抽出した2次元配列
         """
-        # 指定範囲の行除外
-        remaining_rows = np.setdiff1d(np.arange(array_2d.shape[0]), rows)
-        # 指定範囲の列除外
-        remaining_cols = np.setdiff1d(np.arange(array_2d.shape[1]), cols)
-        # 指定範囲の列と行を除外した範囲を抽出
-        return array_2d[np.ix_(remaining_rows, remaining_cols)]
+        # 除外対象の行・列を除いたインデックスを取得
+        row_indices = np.arange(array_2d.shape[0]) if rows is None else np.setdiff1d(np.arange(array_2d.shape[0]), rows)
+        col_indices = np.arange(array_2d.shape[1]) if cols is None else np.setdiff1d(np.arange(array_2d.shape[1]), cols)
+        # 指定された行・列を除外して抽出
+        return array_2d[np.ix_(row_indices, col_indices)]
 
     # ---------------------------------------------
     #  2次元配列の要素を列単位で演算する関数
     # ---------------------------------------------
     @staticmethod
     def get_value_count_for_column(array_2d: np.ndarray, value: int, is_same: bool = True) -> np.ndarray:
-        """2次元整数配列に対して、各列の値が指定値と一致する(しない)数を行単位に集計する
+        """2次元整数配列に対して、各列毎にまとめた結果が指定値と一致する（またはしない）要素数をカウントして返す
 
         Args:
             array_2d: 2次元のNumPyの整数配列    例: [[0,3,0],[0,0,9],[0,1,3]]
             value: 一致検査する値
             is_same: True:指定数と一致する数をカウント / False:指定数と一致する数をカウント
         Returns:
-            np.ndarray: 各行における指定列の個数結果の一次元配列 例:[3,1,1] or [0,2,2]
+            np.ndarray: 各列における指定値との一致した個数の一次元配列 例:[3,1,1] or [0,2,2]
         """
         # 指定数と一致する数の結果を列単位にまとめて1次元配列に変換する
         if is_same:
@@ -121,6 +121,23 @@ class Array2d:
         else:
             res = (array_2d != value).sum(axis=0)
         return res
+
+    @staticmethod
+    def get_bit_on_count_for_column(array_2d: np.ndarray, bit_pos: int) -> np.ndarray:
+        """2次元整数配列に対して、各列毎にまとめた結果が指定ビットがOnの要素数をカウントして返す
+
+        Args:
+            array_2d: 2次元のNumPyの整数配列    例: [[0,3,0],[0,0,9],[0,1,3]]
+            bit_pos: 検査対象のビット位置(0からカウント) 例: 0=(2**0)
+        Returns:
+            np.ndarray: 各列における指定ビットがOnの個数の一次元配列 例: [0, 2, 2]
+        """
+        # 指定ビット位置のマスクを作成
+        mask_bit = 1 << bit_pos
+        # 各要素に対して指定ビットがONかどうかを判定（True/Falseの配列）
+        bit_on = (array_2d & mask_bit) > 0
+        # 列ごとにTrueの個数を集計
+        return bit_on.sum(axis=0)
 
     @staticmethod
     def bitwise_or_columns(array_2d: np.ndarray) -> np.ndarray:
